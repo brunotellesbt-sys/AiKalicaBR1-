@@ -21,10 +21,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node (more compatible)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 18
 
       - name: Unzip source
         run: |
@@ -37,44 +37,53 @@ jobs:
       - name: Find project root (where package.json is)
         run: |
           set -e
-          ROOT="$(find app -maxdepth 3 -name package.json -print -quit | xargs -r dirname)"
+          ROOT="$(find app -maxdepth 6 -name package.json -print -quit | xargs -r dirname)"
           if [ -z "$ROOT" ]; then
-            echo "ERROR: package.json not found inside zip (within 3 levels)."
-            echo "Check the zip contents."
+            echo "ERROR: package.json not found inside zip (within 6 levels)."
             exit 1
           fi
           echo "PROJECT_ROOT=$ROOT" >> $GITHUB_ENV
           echo "Found project root: $ROOT"
           ls -la "$ROOT"
 
-      - name: Install dependencies
+      - name: Install dependencies (handle old peer deps)
         working-directory: ${{ env.PROJECT_ROOT }}
-        run: npm install
+        run: npm install --legacy-peer-deps
+
+      - name: Install @angular/localize (match Angular version)
+        working-directory: ${{ env.PROJECT_ROOT }}
+        run: |
+          set -e
+          CORE_VER=$(node -p "require('./package.json').dependencies?.['@angular/core'] || require('./package.json').devDependencies?.['@angular/core'] || ''")
+          if [ -z "$CORE_VER" ]; then
+            echo "ERROR: Could not detect @angular/core version from package.json"
+            exit 1
+          fi
+          echo "Detected @angular/core version: $CORE_VER"
+          npm install @angular/localize@$CORE_VER --legacy-peer-deps
 
       - name: Build (base-href = repo name)
         working-directory: ${{ env.PROJECT_ROOT }}
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
         run: npm run build -- --configuration production --base-href "/${{ github.event.repository.name }}/"
 
-      - name: Detect build output folder
+      - name: Detect Pages output folder (find index.html)
         run: |
           set -e
-          echo "=== dist folders under project root ==="
-          ls -la "${{ env.PROJECT_ROOT }}/dist" || true
-          # Common Angular outputs:
-          if [ -d "${{ env.PROJECT_ROOT }}/dist/pokemon-roulette/browser" ]; then
-            echo "PAGES_PATH=${{ env.PROJECT_ROOT }}/dist/pokemon-roulette/browser" >> $GITHUB_ENV
-          elif [ -d "${{ env.PROJECT_ROOT }}/dist/pokemon-roulette" ]; then
-            echo "PAGES_PATH=${{ env.PROJECT_ROOT }}/dist/pokemon-roulette" >> $GITHUB_ENV
-          else
-            FIRST="$(ls -1 "${{ env.PROJECT_ROOT }}/dist" | head -n 1 || true)"
-            if [ -z "$FIRST" ]; then
-              echo "ERROR: dist folder not found or empty after build."
-              exit 1
-            fi
-            echo "PAGES_PATH=${{ env.PROJECT_ROOT }}/dist/$FIRST" >> $GITHUB_ENV
+          echo "=== dist tree (debug) ==="
+          find "${{ env.PROJECT_ROOT }}/dist" -maxdepth 4 -type f -name "index.html" -print || true
+          IDX="$(find "${{ env.PROJECT_ROOT }}/dist" -maxdepth 6 -type f -name "index.html" -print -quit)"
+          if [ -z "$IDX" ]; then
+            echo "ERROR: Could not find index.html inside dist after build."
+            echo "Listing dist:"
+            ls -la "${{ env.PROJECT_ROOT }}/dist" || true
+            exit 1
           fi
-          echo "Pages path: ${{ env.PAGES_PATH }}"
-          ls -la "${{ env.PAGES_PATH }}"
+          PAGES_PATH="$(dirname "$IDX")"
+          echo "Detected Pages path: $PAGES_PATH"
+          echo "PAGES_PATH=$PAGES_PATH" >> $GITHUB_ENV
+          ls -la "$PAGES_PATH"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
