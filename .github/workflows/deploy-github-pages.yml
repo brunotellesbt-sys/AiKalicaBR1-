@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages (from zip)
 
 on:
   push:
@@ -18,7 +18,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Setup Node
@@ -31,26 +31,50 @@ jobs:
           rm -rf app
           mkdir -p app
           unzip -q pokemon-roulette-source.zip -d app
+          echo "=== app content (top level) ==="
           ls -la app
 
+      - name: Find project root (where package.json is)
+        run: |
+          set -e
+          ROOT="$(find app -maxdepth 3 -name package.json -print -quit | xargs -r dirname)"
+          if [ -z "$ROOT" ]; then
+            echo "ERROR: package.json not found inside zip (within 3 levels)."
+            echo "Check the zip contents."
+            exit 1
+          fi
+          echo "PROJECT_ROOT=$ROOT" >> $GITHUB_ENV
+          echo "Found project root: $ROOT"
+          ls -la "$ROOT"
+
       - name: Install dependencies
-        working-directory: app
-        run: npm ci
+        working-directory: ${{ env.PROJECT_ROOT }}
+        run: npm install
 
       - name: Build (base-href = repo name)
-        working-directory: app
+        working-directory: ${{ env.PROJECT_ROOT }}
         run: npm run build -- --configuration production --base-href "/${{ github.event.repository.name }}/"
 
       - name: Detect build output folder
         run: |
-          if [ -d "app/dist/pokemon-roulette/browser" ]; then
-            echo "PAGES_PATH=app/dist/pokemon-roulette/browser" >> $GITHUB_ENV
-          elif [ -d "app/dist/pokemon-roulette" ]; then
-            echo "PAGES_PATH=app/dist/pokemon-roulette" >> $GITHUB_ENV
+          set -e
+          echo "=== dist folders under project root ==="
+          ls -la "${{ env.PROJECT_ROOT }}/dist" || true
+          # Common Angular outputs:
+          if [ -d "${{ env.PROJECT_ROOT }}/dist/pokemon-roulette/browser" ]; then
+            echo "PAGES_PATH=${{ env.PROJECT_ROOT }}/dist/pokemon-roulette/browser" >> $GITHUB_ENV
+          elif [ -d "${{ env.PROJECT_ROOT }}/dist/pokemon-roulette" ]; then
+            echo "PAGES_PATH=${{ env.PROJECT_ROOT }}/dist/pokemon-roulette" >> $GITHUB_ENV
           else
-            FIRST="$(ls -1 app/dist | head -n 1)"
-            echo "PAGES_PATH=app/dist/$FIRST" >> $GITHUB_ENV
+            FIRST="$(ls -1 "${{ env.PROJECT_ROOT }}/dist" | head -n 1 || true)"
+            if [ -z "$FIRST" ]; then
+              echo "ERROR: dist folder not found or empty after build."
+              exit 1
+            fi
+            echo "PAGES_PATH=${{ env.PROJECT_ROOT }}/dist/$FIRST" >> $GITHUB_ENV
           fi
+          echo "Pages path: ${{ env.PAGES_PATH }}"
+          ls -la "${{ env.PAGES_PATH }}"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
