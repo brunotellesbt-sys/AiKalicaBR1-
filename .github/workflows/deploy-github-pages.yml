@@ -62,18 +62,18 @@ jobs:
           echo "Detected @angular/core version: $CORE_VER"
           npm install @angular/localize@$CORE_VER --legacy-peer-deps
 
-      - name: Build (base-href = repo name)
+      - name: Build (relative paths for GitHub Pages)
         working-directory: ${{ env.PROJECT_ROOT }}
         env:
           NODE_OPTIONS: --max_old_space_size=4096
-        run: npm run build -- --configuration production --base-href "/${{ github.event.repository.name }}/"
+        run: npm run build -- --configuration production --base-href "./" --deploy-url "./"
 
       - name: Detect Pages output folder (find index.html)
         run: |
           set -e
-          echo "=== dist tree (debug) ==="
-          find "${{ env.PROJECT_ROOT }}/dist" -maxdepth 4 -type f -name "index.html" -print || true
-          IDX="$(find "${{ env.PROJECT_ROOT }}/dist" -maxdepth 6 -type f -name "index.html" -print -quit)"
+          echo "=== dist index.html (debug) ==="
+          find "${{ env.PROJECT_ROOT }}/dist" -maxdepth 6 -type f -name "index.html" -print || true
+          IDX="$(find "${{ env.PROJECT_ROOT }}/dist" -maxdepth 8 -type f -name "index.html" -print -quit)"
           if [ -z "$IDX" ]; then
             echo "ERROR: Could not find index.html inside dist after build."
             echo "Listing dist:"
