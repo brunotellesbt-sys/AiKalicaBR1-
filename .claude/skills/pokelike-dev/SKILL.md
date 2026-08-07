@@ -101,7 +101,8 @@ load all three.
 
 | Task | Read |
 |---|---|
-| Anything visual: pixel art, palettes, tiles, sprites, animation, battle FX, the look of a screen | `references/pixel-art.md` |
+| Adding or replacing real game art: overworld sprites, buildings, maps, item icons — and what sources are reachable | `references/assets.md` |
+| Anything drawn by code: palettes, tile painters, canvas sprites, animation, battle FX | `references/pixel-art.md` |
 | Adding or changing content and mechanics: regions, areas, node types, passives, traits, abilities, moves, items, challenges, battle rules, balance | `references/systems.md` |
 | Finding your way around: what a function does, data row formats, run/profile state shape, how a screen is wired | `references/architecture.md` |
 
@@ -113,13 +114,15 @@ without grepping five files.
 These are the constraints that keep the project shippable. Breaking one is
 sometimes right, but do it deliberately and say so.
 
-**Original art only.** This matters twice over. Legally, the project already
-ships 162 map pictures that are Nintendo/Game Freak property and streams
-sprites from PokéAPI — that is the fan-game norm, but it is the part most
-exposed, and every original asset that replaces one reduces it. Aesthetically,
-scraped art from five different games never cohered; art you generate to one
-palette and one grid does. When you add visuals, generate them in canvas or
-draw them as code. Do not add scraped image files.
+**Authentic game art is the chosen direction.** The project owner decided this
+explicitly: markers, people, buildings and maps should look like the real
+games, not like something drawn for the occasion. So prefer a real asset from
+an existing source over anything generated, and keep the generated canvas art
+as the fallback layer beneath it. `references/assets.md` covers where the
+assets come from, what is actually reachable from CI, and how to wire a new one
+in. The project ships Nintendo/Game Freak graphics under the same fair-use
+posture every fan game takes, and the README says so — that is a settled call,
+not one to relitigate on each change.
 
 **No build step, no dependencies.** Classic scripts in load order, globals
 shared between them. That is why the game is one zip and deploys in 40 seconds.

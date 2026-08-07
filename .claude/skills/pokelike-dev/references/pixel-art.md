@@ -306,18 +306,29 @@ Delete `artboard.html` from the source tree before repacking.
 
 ## 8. Where the art currently falls short
 
-An honest starting list, in rough order of visible impact:
+An honest list of what is still drawn by code and still looks it, in rough
+order of visible impact.
 
-1. **NPC sprites are flat fills.** No outline, no shadow, no ramp — see §3. All
-   36 trainer classes share one silhouette, so they are distinguishable only by
-   colour. This is the most visible art in the game after the map itself.
-2. **No tile edge transitions.** Terrain changes are hard rectangular steps (§4).
-3. **Nothing moves.** No water shimmer, no grass sway, no idle bob (§5).
+Note first what is **no longer** on this list: map markers for trainers,
+buildings, the Poké Ball and tall grass are now real game sprites, and the
+generated versions survive only as the fallback layer. See
+`references/assets.md`. That changes the target for everything below — new
+canvas art has to sit next to authentic GBA sprites without looking out of
+place, which mostly means matching their palette depth and their 1px dark
+edges.
+
+1. **Signposts and the exit gate are still generated** (`SpriteGen.sign`,
+   `exitGate`, `stairs`) and are the last obviously hand-made markers on the
+   map. Either find real equivalents (§2 of `assets.md`) or bring them up to
+   the standard of §3 here.
+2. **No tile edge transitions.** Terrain changes are hard rectangular steps
+   (§4). This is the biggest remaining gap for the 211 areas with no map
+   picture.
+3. **Nothing moves.** No water shimmer, no grass sway, no idle bob (§5). The
+   overworld sheets now shipped include full walk cycles, so an animated
+   trainer marker is only a `background-position` step away.
 4. **The battle screen has no environment** — no background, no platforms, no
-   weather visuals (§6).
-5. **Palette ramps do not hue-shift** (§2), so every theme reads slightly muddy.
-6. **162 shipped map pictures are Nintendo's**, are ~20 MB of the 22 MB zip, and
-   are stylistically inconsistent with the generated tiles they sit beside. Every
-   theme whose generated map gets good enough to prefer is one you can drop the
-   pictures for — smaller zip, coherent look, and less of the project resting on
-   somebody else's assets.
+   weather visuals (§6). This is now the flattest screen in the game by a wide
+   margin.
+5. **Palette ramps do not hue-shift** (§2), so the generated themes read muddy
+   next to the real tilesets.
