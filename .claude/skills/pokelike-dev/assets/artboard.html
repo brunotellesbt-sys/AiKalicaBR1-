@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<!--
+  Pokelike artboard — a dev-only review surface for the generated art.
+
+  Judging 8px pixel art inside a running game is guesswork: the tiles are
+  blitted at 2x into a 544x896 panel and half of them are behind a node marker.
+  This page renders every palette, every theme's generated map, and every
+  canvas sprite at magnification, on one scrollable page, so an art change can
+  actually be looked at.
+
+  Copy into the source root and serve:
+      cp assets/artboard.html .pokelike-src/
+      cd .pokelike-src && python3 -m http.server 8123
+      open http://localhost:8123/artboard.html
+
+  Delete it before repacking — it is not part of the game.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pokelike — artboard</title>
+<style>
+  :root { color-scheme: dark; --bg:#12131a; --panel:#1b1d27; --line:#2f3242; --ink:#e8e6f0; --dim:#9a97ad; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  header { position:sticky; top:0; z-index:9; background:rgba(18,19,26,.94); backdrop-filter:blur(8px);
+           border-bottom:1px solid var(--line); padding:14px 20px; display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
+  h1 { font-size:15px; margin:0; letter-spacing:.14em; }
+  h2 { font-size:13px; margin:34px 0 12px; color:var(--dim); text-transform:uppercase; letter-spacing:.16em; }
+  main { padding:0 20px 80px; max-width:1500px; margin:0 auto; }
+  label { color:var(--dim); font-size:12px; display:flex; gap:6px; align-items:center; }
+  canvas { image-rendering: pixelated; display:block; }
+  .row { display:flex; flex-wrap:wrap; gap:14px; }
+  .cell { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px; }
+  .cell figcaption { color:var(--dim); font-size:11px; margin-top:8px; text-align:center; }
+  .ramp { display:flex; border-radius:4px; overflow:hidden; border:1px solid var(--line); }
+  .ramp i { width:34px; height:34px; display:block; }
+  .pal { display:grid; grid-template-columns:104px 1fr; gap:10px; align-items:center; margin-bottom:8px; }
+  .pal b { font-weight:600; font-size:12px; color:var(--dim); }
+  .maps { display:flex; gap:14px; overflow-x:auto; padding-bottom:12px; }
+  .maps .cell { flex:0 0 auto; }
+  .err { background:#3a1c22; border-color:#7a2f3c; color:#ffb3bd; padding:12px 14px; border-radius:8px; white-space:pre-wrap; }
+  .hint { color:var(--dim); font-size:12px; margin:6px 0 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>POKELIKE ARTBOARD</h1>
+  <label>sprite zoom <input id="zoom" type="range" min="2" max="12" value="8"> <span id="zoomv">8×</span></label>
+  <label>map zoom <input id="mzoom" type="range" min="1" max="4" step="1" value="1"> <span id="mzoomv">1×</span></label>
+  <label><input id="grid" type="checkbox"> tile grid</label>
+  <span id="status" class="hint"></span>
+</header>
+
+<main>
+  <div id="fatal"></div>
+  <h2>Palettes</h2>
+  <p class="hint">Each palette is a 4-step ramp (g0 light → g3 outline) plus feature colours. A ramp that
+    only changes lightness reads flat; hue-shifting the dark end toward blue and the light end toward
+    yellow is what makes it look painted rather than dimmed.</p>
+  <div id="palettes"></div>
+
+  <h2>Generated maps — one per theme</h2>
+  <p class="hint">Same node graph in every theme, so differences you see are the painter's, not the layout's.</p>
+  <div id="maps" class="maps"></div>
+
+  <h2>Canvas sprites</h2>
+  <p class="hint">These are the node markers on the map. They are drawn at 16–20px and must read at that
+    size — squint at the 1× column, not the magnified one.</p>
+  <div id="sprites" class="row"></div>
+</main>
+
+<script>window.MAP_IMAGES_DISABLED = true;</script>
+<script src="data/pokedex.js"></script>
+<script src="data/content.js"></script>
+<script src="data/regions.js"></script>
+<script src="js/core.js"></script>
+<script src="js/map.js"></script>
+<script>
+(function () {
+  const $ = s => document.querySelector(s);
+  const fail = msg => { $('#fatal').innerHTML = '<div class="err">' + msg + '</div>'; };
+
+  if (typeof MapGen === 'undefined' || typeof SpriteGen === 'undefined') {
+    return fail('map.js did not load.\nServe this page over http (python3 -m http.server), not file://,\nand copy it into the source root so the relative script paths resolve.');
+  }
+
+  const cell = (label, node) => {
+    const f = document.createElement('figure');
+    f.className = 'cell';
+    f.style.margin = '0';
+    f.appendChild(node);
+    const c = document.createElement('figcaption');
+    c.textContent = label;
+    f.appendChild(c);
+    return f;
+  };
+
+  /* ------------------------------------------------------------- palettes */
+  // Read the palettes back off the engine rather than duplicating them here,
+  // so this page cannot drift from what the game actually paints.
+  const PAL = (typeof PALETTES !== 'undefined') ? PALETTES : null;
+  if (PAL) {
+    const host = $('#palettes');
+    for (const [name, pal] of Object.entries(PAL)) {
+      const wrap = document.createElement('div');
+      wrap.className = 'pal';
+      const swatches = Object.entries(pal).flatMap(([k, v]) =>
+        (Array.isArray(v) ? v : [v]).map(c => `<i title="${k} ${c}" style="background:${c}"></i>`)).join('');
+      wrap.innerHTML = `<b>${name}</b><div class="ramp">${swatches}</div>`;
+      host.appendChild(wrap);
+    }
+  } else {
+    $('#palettes').innerHTML = '<p class="hint">PALETTES is not exported from map.js — swatches unavailable.</p>';
+  }
+
+  /* ----------------------------------------------------------- theme maps */
+  // A synthetic stage per painter. The node graph is fixed so the only thing
+  // varying between panels is the art.
+  const W = MapGen.width, H = MapGen.height;
+  const fakeNodes = [
+    { id: 'start', kind: 'start', x: W / 2, y: H - 52, next: ['a'] },
+    { id: 'a', kind: 'battle', x: W / 2 - 90, y: H - 260, next: ['b'] },
+    { id: 'b', kind: 'heal', x: W / 2 + 80, y: H - 470, next: ['c'] },
+    { id: 'c', kind: 'trainer', x: W / 2 - 40, y: H - 660, next: ['cap'] },
+    { id: 'cap', kind: 'exit', x: W / 2, y: 68, next: [] },
+  ];
+
+  const painters = (typeof THEME_CFG !== 'undefined') ? Object.keys(THEME_CFG) : [];
+  const mapHost = $('#maps');
+  const mapCanvases = [];
+  for (const painter of painters) {
+    const cv = document.createElement('canvas');
+    const stage = {
+      id: 'art-' + painter, imageKey: 'art|' + painter, name: painter,
+      theme: painter, painter, trainer: 'youngster', index: 4,
+    };
+    try {
+      MapGen.paint(cv, stage, fakeNodes);
+    } catch (e) {
+      fail('painter "' + painter + '" threw: ' + e.message);
+      continue;
+    }
+    cv.dataset.w = cv.width;
+    mapCanvases.push(cv);
+    mapHost.appendChild(cell(painter, cv));
+  }
+
+  /* -------------------------------------------------------------- sprites */
+  const specs = [];
+  if (typeof TRAINER_CLASSES !== 'undefined') {
+    for (const [cls, t] of Object.entries(TRAINER_CLASSES)) specs.push(['npc ' + cls, () => SpriteGen.npc(cls, t)]);
+  }
+  specs.push(
+    ['grassPatch', () => SpriteGen.grassPatch()],
+    ['center', () => SpriteGen.center()],
+    ['mart', () => SpriteGen.mart()],
+    ['exitGate', () => SpriteGen.exitGate()],
+    ['stairs', () => SpriteGen.stairs()],
+    ['sign rest', () => SpriteGen.sign('rest', 'Z', '#7fb2e5')],
+    ['sign question', () => SpriteGen.sign('q', '?', '#9b6bff')],
+    ['sign trade', () => SpriteGen.sign('trade', 'swap', '#2bb7a6')],
+  );
+
+  const spriteHost = $('#sprites');
+  const imgs = [];
+  for (const [label, make] of specs) {
+    let url;
+    try { url = make(); } catch (e) { fail('sprite "' + label + '" threw: ' + e.message); continue; }
+    const box = document.createElement('div');
+    box.style.cssText = 'display:flex;gap:12px;align-items:flex-end';
+    const one = new Image(); one.src = url; one.style.imageRendering = 'pixelated';
+    const big = new Image(); big.src = url; big.style.imageRendering = 'pixelated';
+    big.dataset.zoom = '1';
+    imgs.push(big);
+    box.appendChild(one); box.appendChild(big);
+    spriteHost.appendChild(cell(label, box));
+  }
+
+  /* -------------------------------------------------------------- controls */
+  const applyZoom = () => {
+    const z = +$('#zoom').value;
+    $('#zoomv').textContent = z + '×';
+    imgs.forEach(im => {
+      const w = im.naturalWidth || 16, h = im.naturalHeight || 16;
+      im.style.width = (w * z) + 'px';
+      im.style.height = (h * z) + 'px';
+    });
+  };
+  const applyMapZoom = () => {
+    const z = +$('#mzoom').value;
+    $('#mzoomv').textContent = z + '×';
+    mapCanvases.forEach(cv => { cv.style.width = (+cv.dataset.w * z / 2) + 'px'; });
+  };
+  // The tile grid overlay makes it obvious when a prop has drifted off the
+  // 8px buffer grid — the usual cause of art that looks subtly smeared.
+  const applyGrid = () => {
+    const on = $('#grid').checked;
+    mapCanvases.forEach(cv => {
+      cv.style.backgroundImage = on
+        ? 'repeating-linear-gradient(0deg,#fff2 0 1px,#0000 1px 16px),repeating-linear-gradient(90deg,#fff2 0 1px,#0000 1px 16px)'
+        : '';
+      cv.style.backgroundBlendMode = 'overlay';
+    });
+  };
+  $('#zoom').addEventListener('input', applyZoom);
+  $('#mzoom').addEventListener('input', applyMapZoom);
+  $('#grid').addEventListener('change', applyGrid);
+  imgs.forEach(im => im.addEventListener('load', applyZoom));
+  applyZoom(); applyMapZoom();
+
+  $('#status').textContent = painters.length + ' painters · ' + specs.length + ' sprites'
+    + (PAL ? ' · ' + Object.keys(PAL).length + ' palettes' : '');
+})();
+</script>
+</body>
+</html>
