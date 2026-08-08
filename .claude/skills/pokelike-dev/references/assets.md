@@ -158,17 +158,51 @@ are not.
 
 ## 6. Maps
 
-162 of 373 areas have a real map picture in `maps/`, keyed by
-`data/maps.js`. The rest fall back to the tile engine, and that fallback is
-automatic — an area with no entry, or an entry whose file fails to load, just
-gets tiles.
+190 of 373 areas have a real map picture in `maps/`, keyed by `data/maps.js`.
+The rest fall back to the tile engine automatically — an area with no entry, or
+an entry whose file fails to load, just gets tiles.
 
-`tools/fetch-maps.mjs` collects them from the Fandom wiki, which is **not
-reachable from CI here** (§1). Its own constraints still apply wherever it does
-run: it deliberately rejects Gen 6+ (Kalos onward never had 2D top-down maps,
-only 3D screenshots), the monochrome RBY/GSC era, interiors, and thumbnails.
-Kanto, Johto, Hoenn, Sinnoh and Unova are the regions with real coverage.
+There are two collectors, and they solve different halves of the problem.
 
-If you need to expand coverage, the options are a machine with open egress, or
-finding a GitHub-hosted mirror of the map images and pointing a new collector
-at `raw.githubusercontent.com`.
+**`tools/fetch-maps.mjs`** downloads finished pictures from the Fandom wiki.
+Cheaper when it works, but the wiki is unreachable from CI (§1), so it cannot
+run here at all. The 162 maps it gathered are still the prettier ones for
+Kanto and Johto — several came from HGSS, which is a generation newer and
+richer than the Gen 3 equivalent.
+
+**`tools/render-maps.py`** rebuilds maps from the games' own data instead:
+the decomp repos publish tile atlases, metatile definitions, palettes and the
+block layout of every map, so the output is pixel-identical to the real map
+because it *is* the real map. It covers Generation 3 — FireRed for Kanto,
+Emerald for Hoenn — and filled the 28 gaps in those two regions.
+
+Two constants differ per game and **fail silently** if you assume them:
+
+| | FireRed | Emerald |
+|---|---|---|
+| `NUM_TILES_IN_PRIMARY` | 640 | 512 |
+| `NUM_METATILES_IN_PRIMARY` | 640 | 512 |
+| `NUM_PALS_IN_PRIMARY` | 7 | 6 |
+
+A wrong tile split draws nothing; a wrong palette split draws everything in the
+wrong colours — Hoenn's caves came out pure black that way, and looked like
+ordinary small files rather than errors. Both games publish these in
+`include/fieldmap.h`, so the tool reads them per source rather than guessing,
+and refuses to write a render that came out a single flat colour.
+
+**Do not `--force` over existing maps** without looking at the result. It
+re-renders everything, including the HGSS-sourced Kanto maps, which is a
+downgrade in visual richness even though it is more faithful to Gen 1/3.
+
+What is left, and why:
+
+- **Johto (19), Sinnoh (7), Unova (9)** — real 2D maps exist but need other
+  renderers. `pret/pokecrystal` is reachable and has all the pieces for Johto
+  (`maps/*.blk`, `gfx/tilesets/*.png`, `data/tilesets/*_metatiles.bin`,
+  `*_palette_map.asm`), but Gen 2 is a different format: 32×32 blocks of 4×4
+  tiles, no layers, GBC palettes assigned per tile through the palette map.
+  Sinnoh and Unova are NDS decomps, a bigger step again.
+- **Kalos, Alola, Galar, Paldea (149)** — impossible, not merely unfinished.
+  Those games are 3D and never had a 2D top-down map to extract. The tile
+  engine is the only option there, which makes `references/pixel-art.md` §4
+  (autotiling) the highest-value work for them.

@@ -27,8 +27,10 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
+# .mapcache holds the decomp tilesets render-maps.py downloads — tens of MB of
+# build input that must never reach the deployed site.
 ( cd "$SRC" && zip -q -r -X "$TMP/out.zip" . \
-    -x '.claude/*' '*.skill' '.packed-at' '.git/*' \
+    -x '.claude/*' '*.skill' '.packed-at' '.git/*' '.mapcache/*' \
        '__MACOSX/*' '.DS_Store' '*/.DS_Store' 'node_modules/*' )
 
 # Verify the artifact the way the workflow will, before it reaches CI.
