@@ -27,12 +27,20 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
+# .mapcache holds the decomp tilesets render-maps.py downloads — tens of MB of
+# build input that must never reach the deployed site.
 ( cd "$SRC" && zip -q -r -X "$TMP/out.zip" . \
-    -x '.claude/*' '*.skill' '.packed-at' '.git/*' \
+    -x '.claude/*' '*.skill' '.packed-at' '.git/*' '.mapcache/*' \
        '__MACOSX/*' '.DS_Store' '*/.DS_Store' 'node_modules/*' )
 
 # Verify the artifact the way the workflow will, before it reaches CI.
-unzip -l "$TMP/out.zip" | grep -qE ' index\.html$' || {
+#
+# The listing is captured first rather than piped into `grep -q`: under
+# `set -o pipefail` the early exit of `grep -q` gives `unzip` a SIGPIPE, the
+# pipeline reports 141, and a perfectly good zip looks broken. It races on zip
+# size, so it passes on a small tree and fails on a big one.
+LISTING="$(unzip -l "$TMP/out.zip")"
+grep -qE ' index\.html$' <<<"$LISTING" || {
   echo "error: index.html is not at the zip root — the Pages deploy would fail" >&2
   exit 1
 }
