@@ -321,15 +321,15 @@ edges.
    `exitGate`, `stairs`) and are the last obviously hand-made markers on the
    map. Either find real equivalents (§2 of `assets.md`) or bring them up to
    the standard of §3 here.
-2. **Nothing moves.** No water shimmer, no grass sway, no idle bob (§5). The
-   overworld sheets now shipped include full walk cycles, so an animated
-   trainer marker is only a `background-position` step away.
-3. **The battle screen has no environment** — no background, no platforms, no
-   weather visuals (§6). This is now the flattest screen in the game by a wide
-   margin, and the obvious next piece of work.
+1. **The map does not move.** No water shimmer, no grass sway, no idle bob
+   (§5). The overworld sheets now shipped include full walk cycles, so an
+   animated trainer marker is only a `background-position` step away — that is
+   the cheapest next win on this list.
+2. **Signposts and the exit gate are still generated canvas sprites**, the last
+   obviously hand-made markers on the map.
 
-Two items came off this list and are worth knowing as precedent rather than
-as outstanding work:
+Items that came off this list, worth knowing as precedent rather than as
+outstanding work:
 
 - **Tile edge transitions exist now.** `MapGen.paintEdges` runs between the
   ground and prop passes and draws seams from a four-neighbour comparison
@@ -341,3 +341,18 @@ as outstanding work:
   highlights warm and shadows cool while leaving lightness and saturation as
   authored, so each theme keeps its identity and only gains depth (§2). Grey
   ramps are skipped — rotating a hue into them tints the whole theme.
+- **The battle arena is themed.** `UI.applyArena` sets CSS custom properties on
+  `.battle-stage` from the current area's palette, with the sky half coming
+  from `THEME_SKY` in map.js because a cave ceiling cannot be derived from a
+  ground ramp. Both fighters stand on the ground band — the horizon sits high,
+  at 28%, precisely because the opposing Pokémon occupies the upper third and
+  any lower a horizon leaves it hanging in mid-air.
+- **HP bars tween.** `renderBattle` rewrites the whole card, so a fresh element
+  would start at the new width with nothing to animate. `UI.hpBar` takes a key,
+  renders at the *previous* value, and `UI.settleHpBars` moves it on the next
+  frame. Reuse that pattern for any bar that needs to glide across a full
+  re-render.
+- **Animation is one body class.** `UI.applyPrefs` toggles `body.no-anim` from
+  the setting, and CSS switches every keyframe and transition off there rather
+  than each call site checking. New animation should be disabled under that
+  selector too.

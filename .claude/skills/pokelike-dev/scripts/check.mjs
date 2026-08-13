@@ -65,14 +65,24 @@ if (errors.length) { report(); process.exit(1); }
 // layer is replaced wholesale further down, so nothing here has to paint.
 const store = new Map();
 const stubCanvas = () => ({
+  style: stubStyle(),
   width: 0, height: 0,
   getContext: () => new Proxy({}, { get: () => () => {} }),
   toDataURL: () => 'data:image/png;base64,',
 });
+// `style` needs the CSS-custom-property methods, not just plain assignment —
+// the battle arena sets its palette through setProperty.
+const stubStyle = () => ({ setProperty() {}, getPropertyValue: () => '', removeProperty() {} });
 const stubEl = () => new Proxy({
-  style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
-  children: [], innerHTML: '', textContent: '', value: '',
-  appendChild() {}, setAttribute() {}, removeAttribute() {}, addEventListener() {},
+  style: stubStyle(), dataset: {},
+  classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
+  children: [], innerHTML: '', textContent: '', value: '', className: '',
+  appendChild() {}, removeChild() {}, setAttribute() {}, removeAttribute() {},
+  addEventListener() {}, removeEventListener() {},
+  // Elements query their own subtree (the battle stage looks up its weather
+  // layer), so a node has to answer the same selector API the document does.
+  querySelector: () => null, querySelectorAll: () => [],
+  getBoundingClientRect: () => ({ x: 0, y: 0, width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0 }),
   getContext: () => new Proxy({}, { get: () => () => {} }),
 }, { get: (t, k) => (k in t ? t[k] : undefined), set: (t, k, v) => (t[k] = v, true) });
 
