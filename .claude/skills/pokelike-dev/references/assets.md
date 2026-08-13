@@ -173,10 +173,19 @@ richer than the Gen 3 equivalent.
 **`tools/render-maps.py`** rebuilds maps from the games' own data instead:
 the decomp repos publish tile atlases, metatile definitions, palettes and the
 block layout of every map, so the output is pixel-identical to the real map
-because it *is* the real map. It covers Generation 3 — FireRed for Kanto,
-Emerald for Hoenn — and filled the 28 gaps in those two regions.
+because it *is* the real map. It has a backend per generation:
 
-Two constants differ per game and **fail silently** if you assume them:
+| Region | Source | Format |
+|---|---|---|
+| Kanto | `pret/pokefirered` | Gen 3 |
+| Hoenn | `pret/pokeemerald` | Gen 3 |
+| Johto | `pret/pokecrystal` | Gen 2 |
+
+Together they closed all 47 gaps in those three regions.
+
+**Gen 3** composes 16×16 blocks from two-layer metatiles; the tileset atlas is
+greyscale and the colours live in sibling `.pal` files. Two constants differ
+per game and **fail silently** if you assume them:
 
 | | FireRed | Emerald |
 |---|---|---|
@@ -194,14 +203,23 @@ and refuses to write a render that came out a single flat colour.
 re-renders everything, including the HGSS-sourced Kanto maps, which is a
 downgrade in visual richness even though it is more faithful to Gen 1/3.
 
+**Gen 2** shares nothing with that but the idea: 32×32 blocks of 4×4 tiles, no
+layers, 2bpp tiles (four grey levels) that take their colour from a palette
+*name* per tile, resolved against the Game Boy Color's eight background
+palettes in `gfx/tilesets/bg_tiles.pal` (5-bit channels — scale by 255/31).
+Neither a map's tileset nor its dimensions live in one place; you have to cross
+`data/maps/maps.asm` (label → tileset), `data/maps/attributes.asm` (label →
+map constant) and `constants/map_constants.asm` (constant → width, height).
+Watch the `map_attributes` macro: its third field is the *border block*, not
+the tileset, which is an easy and quiet mistake.
+
+Black voids in a Gen 2 cave render are usually authentic — GBC cave maps use a
+black out-of-bounds tile — so do not "fix" them without comparing to the game.
+
 What is left, and why:
 
-- **Johto (19), Sinnoh (7), Unova (9)** — real 2D maps exist but need other
-  renderers. `pret/pokecrystal` is reachable and has all the pieces for Johto
-  (`maps/*.blk`, `gfx/tilesets/*.png`, `data/tilesets/*_metatiles.bin`,
-  `*_palette_map.asm`), but Gen 2 is a different format: 32×32 blocks of 4×4
-  tiles, no layers, GBC palettes assigned per tile through the palette map.
-  Sinnoh and Unova are NDS decomps, a bigger step again.
+- **Sinnoh (6), Unova (9)** — real 2D maps exist, but these are NDS decomps,
+  a bigger step again than either backend here.
 - **Kalos, Alola, Galar, Paldea (149)** — impossible, not merely unfinished.
   Those games are 3D and never had a 2D top-down map to extract. The tile
   engine is the only option there, which makes `references/pixel-art.md` §4
