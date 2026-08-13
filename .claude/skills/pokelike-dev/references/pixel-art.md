@@ -321,14 +321,23 @@ edges.
    `exitGate`, `stairs`) and are the last obviously hand-made markers on the
    map. Either find real equivalents (§2 of `assets.md`) or bring them up to
    the standard of §3 here.
-2. **No tile edge transitions.** Terrain changes are hard rectangular steps
-   (§4). This is the biggest remaining gap for the 211 areas with no map
-   picture.
-3. **Nothing moves.** No water shimmer, no grass sway, no idle bob (§5). The
+2. **Nothing moves.** No water shimmer, no grass sway, no idle bob (§5). The
    overworld sheets now shipped include full walk cycles, so an animated
    trainer marker is only a `background-position` step away.
-4. **The battle screen has no environment** — no background, no platforms, no
+3. **The battle screen has no environment** — no background, no platforms, no
    weather visuals (§6). This is now the flattest screen in the game by a wide
-   margin.
-5. **Palette ramps do not hue-shift** (§2), so the generated themes read muddy
-   next to the real tilesets.
+   margin, and the obvious next piece of work.
+
+Two items came off this list and are worth knowing as precedent rather than
+as outstanding work:
+
+- **Tile edge transitions exist now.** `MapGen.paintEdges` runs between the
+  ground and prop passes and draws seams from a four-neighbour comparison
+  rather than a Wang set (§4). Light falls from the top-left everywhere — north
+  and west seams catch light, south and east fall into shadow — and keeping
+  that consistent is what gives the terrain thickness. Anything new that draws
+  terrain should follow the same convention.
+- **Ramps hue-shift.** `huedRamp` post-processes `PALETTES` at load, rotating
+  highlights warm and shadows cool while leaving lightness and saturation as
+  authored, so each theme keeps its identity and only gains depth (§2). Grey
+  ramps are skipped — rotating a hue into them tints the whole theme.
