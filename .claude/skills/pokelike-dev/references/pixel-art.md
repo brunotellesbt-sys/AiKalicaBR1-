@@ -325,9 +325,7 @@ edges.
    by the tile path, because a photograph of a route has no idea where its
    water is. Not obviously worth fixing — but know it before wondering why
    Kanto is still while Alola shimmers.
-2. **Attacks have no effect beyond a flash and a shake.** No per-type impact,
-   no particles. `UI.flash` and `UI.shake` are the hooks; §6 covers the shape.
-3. **The generated canvas sprites are now fallback only.** Every map marker
+2. **The generated canvas sprites are now fallback only.** Every map marker
    resolves to real art first (`SpriteGen` still holds signs, gate and stairs
    for when a manifest entry is missing). If you touch them, remember they are
    the safety net, not the thing players see.
@@ -368,6 +366,13 @@ outstanding work:
   cancels it on any screen change. Copy all three habits: a leaked rAF loop
   repainting 544×896 behind a modal is a real battery drain and an invisible
   one.
+- **Hits have an impact effect.** `UI.impact(side, moveType, eff, crit)` spawns
+  a ring and a shard burst in the move's own type colour, sized by
+  effectiveness, with a white pop on a critical; `UI.shake` takes a `hard` flag
+  for super-effective and critical hits. Two habits to copy: the element
+  removes itself when its animation ends (a long battle would otherwise pile
+  up hundreds of dead nodes), and it is never created at all when animations
+  are off, rather than created and hidden.
 - **NPC markers walk.** Pure CSS stepping the sprite sheet's own frames
   (0-3-0-4, the games' own standing animation), staggered off each other so a
   row of trainers does not step in unison. Only sheets that have those frames
