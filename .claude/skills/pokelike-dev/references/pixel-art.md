@@ -321,12 +321,12 @@ edges.
    `exitGate`, `stairs`) and are the last obviously hand-made markers on the
    map. Either find real equivalents (§2 of `assets.md`) or bring them up to
    the standard of §3 here.
-1. **The map does not move.** No water shimmer, no grass sway, no idle bob
-   (§5). The overworld sheets now shipped include full walk cycles, so an
-   animated trainer marker is only a `background-position` step away — that is
-   the cheapest next win on this list.
-2. **Signposts and the exit gate are still generated canvas sprites**, the last
+1. **Signposts and the exit gate are still generated canvas sprites**, the last
    obviously hand-made markers on the map.
+2. **Areas with a real map picture do not animate.** `MapGen._live` is only set
+   by the tile path, because a photograph of a route has no idea where its
+   water is. Not obviously worth fixing — but know it before wondering why
+   Kanto is still while Alola shimmers.
 
 Items that came off this list, worth knowing as precedent rather than as
 outstanding work:
@@ -356,3 +356,16 @@ outstanding work:
   the setting, and CSS switches every keyframe and transition off there rather
   than each call site checking. New animation should be disabled under that
   selector too.
+- **The map animates, and the loop is owned.** `MapGen.startAnim` ticks at
+  ~6fps (`TICK_MS`), restores a pristine copy of the finished buffer and
+  repaints only water and tall grass — never the grid, the tiles or the props,
+  which cost far too much to redo per frame. It refuses to start when the
+  setting is off *or when the area has nothing that moves*, and `UI.show`
+  cancels it on any screen change. Copy all three habits: a leaked rAF loop
+  repainting 544×896 behind a modal is a real battery drain and an invisible
+  one.
+- **NPC markers walk.** Pure CSS stepping the sprite sheet's own frames
+  (0-3-0-4, the games' own standing animation), staggered off each other so a
+  row of trainers does not step in unison. Only sheets that have those frames
+  get the class — a three-frame character would otherwise flick between
+  facings.
