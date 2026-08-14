@@ -321,12 +321,16 @@ edges.
    `exitGate`, `stairs`) and are the last obviously hand-made markers on the
    map. Either find real equivalents (§2 of `assets.md`) or bring them up to
    the standard of §3 here.
-1. **Signposts and the exit gate are still generated canvas sprites**, the last
-   obviously hand-made markers on the map.
-2. **Areas with a real map picture do not animate.** `MapGen._live` is only set
+1. **Areas with a real map picture do not animate.** `MapGen._live` is only set
    by the tile path, because a photograph of a route has no idea where its
    water is. Not obviously worth fixing — but know it before wondering why
    Kanto is still while Alola shimmers.
+2. **Attacks have no effect beyond a flash and a shake.** No per-type impact,
+   no particles. `UI.flash` and `UI.shake` are the hooks; §6 covers the shape.
+3. **The generated canvas sprites are now fallback only.** Every map marker
+   resolves to real art first (`SpriteGen` still holds signs, gate and stairs
+   for when a manifest entry is missing). If you touch them, remember they are
+   the safety net, not the thing players see.
 
 Items that came off this list, worth knowing as precedent rather than as
 outstanding work:

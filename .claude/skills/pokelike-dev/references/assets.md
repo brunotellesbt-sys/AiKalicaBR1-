@@ -82,8 +82,21 @@ Note the INCBIN paths in those headers name `.4bpp` files — those are build
 artifacts. The repo file is the `.png` next to it.
 
 **Other confirmed-reachable repos**: `PokeAPI/sprites` (Pokémon and 30×30 item
-icons — already used at runtime by `js/core.js` and `UI.itemSprite`),
-`PokeAPI/cries`, `msikma/pokesprite` (32×32 item icons, an alternative).
+icons), `PokeAPI/cries`, `msikma/pokesprite` (32×32 item icons, an
+alternative).
+
+**When no real sprite exists for a concept, borrow the item that means it.**
+Nothing in any Pokémon game depicts a "random event" or a "rest stop", and an
+invented signpost looks invented next to authentic art. Real items carrying the
+same meaning read better and stay in style: the Escape Rope for *leave this
+area*, the Up-Grade (the trade item) for a trade offer, Moomoo Milk for a rest
+stop, the Odd Keystone for something strange. That is how the last hand-drawn
+markers were retired — see `ITEMS_GFX` in `tools/fetch-overworld.mjs`.
+
+Item icons are **shipped, not hot-linked**. Pokémon sprites and cries still
+stream at runtime (there are 1025 of them; bundling is not an option), but the
+handful of fixed marker icons are small enough to include, and doing so takes
+the map screen off the network entirely.
 
 ## 3. Sheet and palette formats
 
